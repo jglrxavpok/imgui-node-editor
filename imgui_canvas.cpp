@@ -352,7 +352,7 @@ void ImGuiEx::Canvas::SaveViewportState()
 {
 # if defined(IMGUI_HAS_VIEWPORT)
     auto window = ImGui::GetCurrentWindow();
-    auto viewport = ImGui::GetWindowViewport();
+    auto viewport = static_cast<ImGuiViewportP*>(ImGui::GetWindowViewport());
 
     m_WindowPosBackup = window->Pos;
     m_ViewportPosBackup = viewport->Pos;
@@ -366,7 +366,7 @@ void ImGuiEx::Canvas::RestoreViewportState()
 {
 # if defined(IMGUI_HAS_VIEWPORT)
     auto window = ImGui::GetCurrentWindow();
-    auto viewport = ImGui::GetWindowViewport();
+    auto viewport = static_cast<ImGuiViewportP*>(ImGui::GetWindowViewport());
 
     window->Pos = m_WindowPosBackup;
     viewport->Pos = m_ViewportPosBackup;
@@ -429,7 +429,7 @@ void ImGuiEx::Canvas::EnterLocalSpace()
     viewport_max.x = (viewport_max.x - m_ViewTransformPosition.x) * m_View.InvScale;
     viewport_max.y = (viewport_max.y - m_ViewTransformPosition.y) * m_View.InvScale;
 
-    auto viewport = ImGui::GetWindowViewport();
+    auto viewport = static_cast<ImGuiViewportP*>(ImGui::GetWindowViewport());
     viewport->Pos  = viewport_min;
     viewport->Size = viewport_max - viewport_min;
     viewport->WorkOffsetMin = m_ViewportWorkOffsetMinBackup * m_View.InvScale;
