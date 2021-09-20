@@ -200,7 +200,11 @@ struct Style
         PivotAlignment          = ImVec2(0.5f, 0.5f);
         PivotSize               = ImVec2(0.0f, 0.0f);
         PivotScale              = ImVec2(1, 1);
+#if IMGUI_VERSION_NUM > 18101
+        PinCorners              = ImDrawFlags_RoundCornersAll;
+#else
         PinCorners              = ImDrawCornerFlags_All;
+#endif
         PinRadius               = 0.0f;
         PinArrowSize            = 0.0f;
         PinArrowWidth           = 0.0f;
@@ -301,6 +305,8 @@ void SetGroupSize(NodeId nodeId, const ImVec2& size);
 ImVec2 GetNodePosition(NodeId nodeId);
 ImVec2 GetNodeSize(NodeId nodeId);
 void CenterNodeOnScreen(NodeId nodeId);
+void SetNodeZPosition(NodeId nodeId, float z); // Sets node z position, nodes with higher value are drawn over nodes with lower value
+float GetNodeZPosition(NodeId nodeId); // Returns node z position, defaults is 0.0f
 
 void RestoreNodeState(NodeId nodeId);
 
@@ -371,8 +377,8 @@ ImVec2 GetScreenSize();
 ImVec2 ScreenToCanvas(const ImVec2& pos);
 ImVec2 CanvasToScreen(const ImVec2& pos);
 
-
-
+int GetNodeCount();                                // Returns number of submitted nodes since Begin() call
+int GetOrderedNodeIds(NodeId* nodes, int size);    // Fills an array with node id's in order they're drawn; up to 'size` elements are set. Returns actual size of filled id's.
 
 
 

@@ -117,6 +117,12 @@ static const float c_SelectionFadeOutDuration   = 0.15f; // seconds
 static const auto  c_MaxMoveOverEdgeSpeed       = 10.0f;
 static const auto  c_MaxMoveOverEdgeDistance    = 300.0f;
 
+#if IMGUI_VERSION_NUM > 18101
+static const auto  c_AllRoundCornersFlags = ImDrawFlags_RoundCornersAll;
+#else
+static const auto  c_AllRoundCornersFlags = 15;
+#endif
+
 
 //------------------------------------------------------------------------------
 # if defined(_DEBUG) && defined(_WIN32)
@@ -621,7 +627,7 @@ void ed::Node::Draw(ImDrawList* drawList, DrawFlags flags)
                 drawList->AddRect(
                     m_GroupBounds.Min,
                     m_GroupBounds.Max,
-                    m_GroupBorderColor, m_GroupRounding, 15, m_GroupBorderWidth);
+                    m_GroupBorderColor, m_GroupRounding, c_AllRoundCornersFlags, m_GroupBorderWidth);
             }
         }
 
@@ -672,7 +678,7 @@ void ed::Node::DrawBorder(ImDrawList* drawList, ImU32 color, float thickness)
     if (thickness > 0.0f)
     {
         drawList->AddRect(m_Bounds.Min, m_Bounds.Max,
-            color, m_Rounding, 15, thickness);
+            color, m_Rounding, c_AllRoundCornersFlags, thickness);
     }
 }
 
@@ -1311,6 +1317,12 @@ void ed::EditorContext::End()
         });
     }
 
+    // Apply Z order
+    std::stable_sort(m_Nodes.begin(), m_Nodes.end(), [](const auto& lhs, const auto& rhs)
+    {
+        return lhs->m_ZPosition < rhs->m_ZPosition;
+    });
+
 # if 1
     // Every node has few channels assigned. Grow channel list
     // to hold twice as much of channels and place them in
@@ -1565,6 +1577,27 @@ ImVec2 ed::EditorContext::GetNodeSize(NodeId nodeId)
         return ImVec2(0, 0);
 
     return node->m_Bounds.GetSize();
+}
+
+void ed::EditorContext::SetNodeZPosition(NodeId nodeId, float z)
+{
+    auto node = FindNode(nodeId);
+    if (!node)
+    {
+        node = CreateNode(nodeId);
+        node->m_IsLive = false;
+    }
+
+    node->m_ZPosition = z;
+}
+
+float ed::EditorContext::GetNodeZPosition(NodeId nodeId)
+{
+    auto node = FindNode(nodeId);
+    if (!node)
+        return 0.0f;
+
+    return node->m_ZPosition;
 }
 
 void ed::EditorContext::MarkNodeToRestoreState(Node* node)
@@ -1828,6 +1861,21 @@ bool ed::EditorContext::CanAcceptUserInput() const
     return m_IsFocused && m_IsHovered;
 }
 
+int ed::EditorContext::CountLiveNodes() const
+{
+    return (int)std::count_if(m_Nodes.begin(),  m_Nodes.end(),  [](const Node* node)  { return node->m_IsLive; });
+}
+
+int ed::EditorContext::CountLivePins() const
+{
+    return (int)std::count_if(m_Pins.begin(),   m_Pins.end(),   [](const Pin*  pin)   { return pin->m_IsLive; });
+}
+
+int ed::EditorContext::CountLiveLinks() const
+{
+    return (int)std::count_if(m_Links.begin(),  m_Links.end(),  [](const Link* link)  { return link->m_IsLive; });
+}
+
 ed::Pin* ed::EditorContext::CreatePin(PinId id, PinKind kind)
 {
     IM_ASSERT(nullptr == FindObject(id));
@@ -2053,6 +2101,26 @@ ImU32 ed::EditorContext::GetColor(StyleColor colorIndex, float alpha) const
 {
     auto color = m_Style.Colors[colorIndex];
     return ImColor(color.x, color.y, color.z, color.w * alpha);
+}
+
+int ed::EditorContext::GetNodeIds(NodeId* nodes, int size) const
+{
+    if (size <= 0)
+        return 0;
+
+    int result = 0;
+    for (auto node : m_Nodes)
+    {
+        if (!node->m_IsLive)
+            continue;
+
+        *nodes++ = node->m_ID;
+        ++result;
+        if (--size == 0)
+            break;
+    }
+
+    return result;
 }
 
 void ed::EditorContext::RegisterAnimation(Animation* animation)
@@ -2358,9 +2426,9 @@ void ed::EditorContext::ShowMetrics(const Control& control)
             return "<unknown>";
     };
 
-    auto liveNodeCount  = (int)std::count_if(m_Nodes.begin(),  m_Nodes.end(),  [](Node*  node)  { return  node->m_IsLive; });
-    auto livePinCount   = (int)std::count_if(m_Pins.begin(),   m_Pins.end(),   [](Pin*   pin)   { return   pin->m_IsLive; });
-    auto liveLinkCount  = (int)std::count_if(m_Links.begin(),  m_Links.end(),  [](Link*  link)  { return  link->m_IsLive; });
+    auto liveNodeCount  = CountLiveNodes();
+    auto livePinCount   = CountLivePins();
+    auto liveLinkCount  = CountLiveLinks();
 
     auto canvasRect     = m_Canvas.Rect();
     auto viewRect       = m_Canvas.ViewRect();
